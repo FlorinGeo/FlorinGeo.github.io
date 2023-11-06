@@ -6,4 +6,4 @@ My personal website
 Ba
 Msc
 
-git config --global user.email "you@example.com"
+## CV
