@@ -1,7 +1,7 @@
 // Initialize the map with the canvas renderer for better performance
 var map = L.map('map', {
     center: [47.5, 13.05],
-    zoom: 8,
+    zoom: 4,
     renderer: L.canvas() // Use canvas renderer
 });
 
@@ -20,25 +20,44 @@ function getColor(d) {
            'white'; // fallback color for values exactly equal to 0
 }
 
-// Create legend control
-var legend = L.control({ position: 'bottomright' });
+// Create linear gradient color scale
+function getGradientColor(value) {
+    var startColor = [0, 255, 0]; // green
+    var endColor = [255, 0, 0]; // red
+    var ratio = (value + 1) / 2; // normalize value to range [0, 1]
+
+    var r = Math.round(startColor[0] * (1 - ratio) + endColor[0] * ratio);
+    var g = Math.round(startColor[1] * (1 - ratio) + endColor[1] * ratio);
+    var b = Math.round(startColor[2] * (1 - ratio) + endColor[2] * ratio);
+
+    return `rgb(${r},${g},${b})`;
+}
+
+// Create legend control with linear gradient
+var legend = L.control({ position: 'bottomleft' });
 
 legend.onAdd = function(map) {
     var div = L.DomUtil.create('div', 'info legend');
     var grades = [-1, 0, 1]; // Values to display in legend
+    var labels = [-1, -0.5, 0, 0.5, 1]; // Intermediate labels for clarity
 
-    // Loop through data values to create legend labels with colors
-    for (var i = 0; i < grades.length; i++) {
-        div.innerHTML +=
-            '<i style="background:' + getColor(grades[i]) + '"></i> ' +
-            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
-    }
+    // Add linear gradient color scale bar
+    div.innerHTML += '<div class="color-scale"></div>';
+
+    // Add labels in one row
+    var labelsDiv = L.DomUtil.create('div', 'labels');
+    labels.forEach(function(label) {
+        var labelDiv = L.DomUtil.create('span', '', labelsDiv);
+        labelDiv.innerHTML = label;
+    });
+    div.appendChild(labelsDiv);
 
     return div;
 };
 
 // Add legend control to the map
 legend.addTo(map);
+
 
 // Variable to store the Chart.js instance
 var chart;

@@ -1,14 +1,25 @@
 h1 {
     position: fixed;
-    color: black;
+    color: white;
     background-color: rgba(194, 43, 43, 0.7);
     top: 10px; /* Adjust the top position as needed */
-    left: 50%; /* Center the title horizontally */
-    transform: translateX(-50%); /* Adjust to center the title */
+    left: 10px; /* Position the title on the left */
     z-index: 5000;
     padding: 10px;
     border-radius: 5px;
 }
+
+/* New style for upper zone */
+#upperZone {
+    width: 100%;
+    background-color: rgba(194, 43, 43, 0.7); /* Color for the entire upper zone */
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    color: white;
+    box-sizing: border-box; /* Ensure padding doesn't add to the total width */
+}
+
 
 body {
     margin: 0;
@@ -28,7 +39,7 @@ body {
 #mapContainer,
 #scatterPlotContainer {
     flex: 1;
-    border: 1px #444 solid;
+    border: 2px #444 solid;
     position: relative;
 }
 
@@ -37,7 +48,23 @@ body {
     height: 100%;
 }
 
+#scatterPlotContainer {
+    display: flex;
+    flex-direction: column;
+}
+
+#scatterPlotText {
+    flex: 0 1 20%; /* Adjust the height as needed */
+    background-color: #f0f0f0; /* Light grey background */
+    padding: 10px;
+    border-bottom: 2px #444 solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 #scatterPlot {
+    flex: 1;
     width: 100%;
     height: 100%;
 }
@@ -56,4 +83,29 @@ body {
 #minFilterSlider,
 #maxFilterSlider {
     margin: 0 10px;
+}
+
+/* Legend styling */
+.info.legend {
+    background-color: rgba(255, 255, 255, 0.8); /* White background with opacity */
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2); /* Optional shadow */
+    font-size: 14px;
+    line-height: 18px;
+    color: #555;
+}
+
+/* Wider color scale bar */
+.legend .color-scale {
+    background: linear-gradient(to right, green, white, red);
+    width: 200px; /* Adjust the width as needed */
+    height: 10px;
+    margin-bottom: 5px;
+}
+
+/* Labels in one row */
+.legend .labels {
+    display: flex;
+    justify-content: space-between;
 }
