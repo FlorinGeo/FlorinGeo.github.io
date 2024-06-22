@@ -13,8 +13,32 @@ var osmap = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 // Add a scale bar to the map, positioned at the bottom right, with metric units only
 L.control.scale({ position: 'bottomright', imperial: false }).addTo(map);
 
-// Create a marker cluster group
-var markers = L.markerClusterGroup();
+// Define colors based on data values (-1 to 1 range)
+function getColor(d) {
+    return d < 0 ? 'green' :
+           d > 0 ? 'red' :
+           'white'; // fallback color for values exactly equal to 0
+}
+
+// Create legend control
+var legend = L.control({ position: 'bottomright' });
+
+legend.onAdd = function(map) {
+    var div = L.DomUtil.create('div', 'info legend');
+    var grades = [-1, 0, 1]; // Values to display in legend
+
+    // Loop through data values to create legend labels with colors
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i]) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+// Add legend control to the map
+legend.addTo(map);
 
 // Variable to store the Chart.js instance
 var chart;
@@ -48,26 +72,36 @@ maxFilterSlider.addEventListener('input', function() {
 
 // Function to update both the map and the scatter plot with filtered markers
 function updateFilteredData() {
-    // Clear existing markers from the cluster group
-    markers.clearLayers();
-
-    // Get current map bounds
-    var bounds = map.getBounds();
+    // Clear existing markers from the map and scatter plot
+    geoJsonLayer.clearLayers();
 
     // Filtered data array based on map bounds and slider values
     var filteredData = [];
 
-    // Iterate over each layer in geoJsonLayer
-    geoJsonLayer.eachLayer(function (layer) {
-        // Check if the layer is within the map bounds and within the filter range
-        var normalizedData = layer.feature.properties.trendline_slope_minmmax_normalized_data;
-        if (bounds.contains(layer.getLatLng()) &&
-            normalizedData >= currentMinFilterValue &&
-            normalizedData <= currentMaxFilterValue) {
-            // Add layer back to the marker cluster group
-            markers.addLayer(layer);
+    // Get current map bounds
+    var bounds = map.getBounds();
 
-            // Add data to the filteredData array for scatter plot
+    // Iterate over each feature in COUNT GeoJSON data
+    COUNT.features.forEach(function (feature) {
+        var normalizedData = feature.properties.trendline_slope_minmmax_normalized_data;
+        var latlng = L.latLng(feature.geometry.coordinates[1], feature.geometry.coordinates[0]);
+
+        // Check if the feature's value is within the filter range and within map bounds
+        if (normalizedData >= currentMinFilterValue && normalizedData <= currentMaxFilterValue && bounds.contains(latlng)) {
+            // Create a circle marker with custom color based on the value
+            var marker = L.circleMarker(latlng, {
+                radius: 6,
+                fillColor: getColor(normalizedData),
+                color: '#000',
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.4
+            }).bindPopup('Name: ' + feature.properties.NAME + '<br>Value: ' + normalizedData);
+
+            // Add marker to filtered GeoJSON layer
+            geoJsonLayer.addLayer(marker);
+
+            // Add value to filtered data array for scatter plot
             filteredData.push(normalizedData);
         }
     });
@@ -75,11 +109,8 @@ function updateFilteredData() {
     // Log filtered data for debugging
     console.log('Filtered Data:', filteredData);
 
-    // Create the scatter plot with the filtered data
+    // Create or update scatter plot with filtered data
     createScatterPlot(filteredData);
-
-    // Add updated marker cluster group back to the map
-    map.addLayer(markers);
 }
 
 // Function to create scatter plot using Chart.js
@@ -97,8 +128,8 @@ function createScatterPlot(data) {
             datasets: [{
                 label: 'Normalized Data',
                 data: data.map((value, index) => ({ x: index, y: value })),
-                backgroundColor: 'rgba(255, 99, 132, 0.2)',
-                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: data.map(value => getColor(value)),
+                borderColor: 'rgba(0, 0, 0, 1)',
                 borderWidth: 1
             }]
         },
@@ -113,6 +144,11 @@ function createScatterPlot(data) {
                     beginAtZero: true
                     // Add other scale options as needed
                 }
+            },
+            plugins: {
+                legend: {
+                    display: false // Hide Chart.js legend as we have a separate legend
+                }
             }
         }
     });
@@ -124,18 +160,30 @@ function createScatterPlot(data) {
 // Check if the COUNT variable is defined and contains features
 if (COUNT && COUNT.features && COUNT.features.length > 0) {
     try {
-        // Create GeoJSON layer and add it to the marker cluster group
-        var geoJsonLayer = L.geoJson(COUNT, {
-            style: { color: "#FF0000", weight: 5 },
-            onEachFeature: function (feature, layer) {
-                // Bind popup or any other interaction here if needed
-                layer.bindPopup('Feature: ' + feature.properties.trendline_slope_minmmax_normalized_data);
+        // Create a GeoJSON layer without using markerClusterGroup
+        var geoJsonLayer = L.geoJson(null, {
+            pointToLayer: function (feature, latlng) {
+                var normalizedData = feature.properties.trendline_slope_minmmax_normalized_data;
+
+                // Create a circle marker with custom color based on the value
+                return L.circleMarker(latlng, {
+                    radius: 2,
+                    fillColor: getColor(normalizedData),
+                    color: '#000',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.2
+                }).bindPopup('Name: ' + feature.properties.NAME + '<br>Value: ' + normalizedData);
             }
         });
-        markers.addLayer(geoJsonLayer);
 
-        // Add marker cluster group to the map
-        map.addLayer(markers);
+        // Add each feature to the GeoJSON layer
+        COUNT.features.forEach(function (feature) {
+            geoJsonLayer.addData(feature);
+        });
+
+        // Add GeoJSON layer to the map
+        geoJsonLayer.addTo(map);
 
         // Update both the map and the scatter plot when map view changes
         map.on('moveend', updateFilteredData);
